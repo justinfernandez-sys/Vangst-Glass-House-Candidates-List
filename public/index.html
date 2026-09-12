@@ -287,6 +287,7 @@
     </div>
     <button class="add-btn" id="openAdd">+ Add candidate</button>
     <button class="btn-ghost" id="openImport" style="margin-left:8px;">Import from CSV</button>
+    <button class="btn-ghost" id="exportCsvBtn" style="margin-left:8px;">Export to CSV</button>
   </header>
 
   <div class="summary" id="summary"></div>
@@ -1058,6 +1059,66 @@ $('#importConfirmBtn').addEventListener('click', () => {
 });
 
 $('#openImport').addEventListener('click', openImport);
+
+/* ---------- CSV Export ---------- */
+const EXPORT_COLUMNS = [
+  { key: 'firstName', header: 'First Name' },
+  { key: 'lastName', header: 'Last Name' },
+  { key: 'phone', header: 'Phone' },
+  { key: 'email', header: 'Email' },
+  { key: 'employeeNumber', header: 'Employee Number' },
+  { key: 'location', header: 'Location Assigned' },
+  { key: 'role', header: 'Role' },
+  { key: 'stage', header: 'Stage', format: (v) => STAGE_LABEL[v] || v },
+  { key: 'bgCheck', header: 'Background Check' },
+  { key: 'bgCheckDate', header: 'BG Check Date' },
+  { key: 'stageDate', header: 'Stage Entry Date' },
+  { key: 'orientationDate', header: 'Orientation Date' },
+  { key: 'orientationMissed', header: 'Orientation Missed', format: (v) => v ? 'Yes' : 'No' },
+  { key: 'trainingDate', header: 'Training Date' },
+  { key: 'trainingMissed', header: 'Training Missed', format: (v) => v ? 'Yes' : 'No' },
+  { key: 'startDate', header: 'Start Date' },
+  { key: 'startMissed', header: 'Start Missed', format: (v) => v ? 'Yes' : 'No' },
+  { key: 'nextAction', header: 'Next Action' },
+  { key: 'nextDate', header: 'Next Action Due' },
+  { key: 'notes', header: 'Notes' },
+];
+
+function csvEscape(value){
+  const str = value === undefined || value === null ? '' : String(value);
+  if(/[",\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"';
+  return str;
+}
+
+function exportCandidatesCsv(){
+  const headerRow = EXPORT_COLUMNS.map(c => csvEscape(c.header)).join(',');
+  const dataRows = candidates.map(c =>
+    EXPORT_COLUMNS.map(col => {
+      const raw = c[col.key];
+      return csvEscape(col.format ? col.format(raw) : raw);
+    }).join(',')
+  );
+  const csv = [headerRow, ...dataRows].join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = todayISO();
+  a.href = url;
+  a.download = `vangst-glasshouse-candidates-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+$('#exportCsvBtn').addEventListener('click', () => {
+  if(candidates.length === 0){
+    alert('There are no candidates to export yet.');
+    return;
+  }
+  exportCandidatesCsv();
+});
 
 function showFormError(msg){
   const el = $('#formError');
