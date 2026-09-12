@@ -765,6 +765,9 @@ function tryChangeStage(cand, newStage){
     const reason = cand.trainingMissed ? 'training is marked as missed' : "training isn't marked complete";
     if(!confirm(`${fullName(cand)}: ${reason}. Move to Bench anyway? (override)`)) return false;
   }
+  if(newStage === 'start' && !cand.startDate){
+    if(!confirm(`${fullName(cand)} doesn't have a Start date set yet. Move to Start anyway? (override)`)) return false;
+  }
 
   cand.stage = newStage;
   cand.stageDate = todayISO();
@@ -1117,6 +1120,10 @@ function saveCandidate(){
     showFormError(trainingMissed
       ? 'Training is marked as missed — check "Override stage requirements" to move to Bench anyway.'
       : 'Training isn\'t completed yet (no date, or not marked done) — check "Override stage requirements" to move to Bench anyway.');
+    return;
+  }
+  if(stage === 'start' && !startDate && !override){
+    showFormError('This candidate doesn\'t have a Start date set yet — check "Override stage requirements" to move to Start anyway.');
     return;
   }
 
