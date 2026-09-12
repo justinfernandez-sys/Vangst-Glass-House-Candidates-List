@@ -287,7 +287,7 @@
     </div>
     <button class="add-btn" id="openAdd">+ Add candidate</button>
     <button class="btn-ghost" id="openImport" style="margin-left:8px;">Import from CSV</button>
-    <button class="btn-ghost" id="exportCsvBtn" style="margin-left:8px;">Export to CSV</button>
+    <button class="btn-ghost" id="exportCsvBtn" style="margin-left:8px;" title="Exports whatever matches the filters currently applied above (stage, location, search)">Export to CSV</button>
   </header>
 
   <div class="summary" id="summary"></div>
@@ -342,7 +342,7 @@
           <th>Stage</th>
           <th>Scheduled</th>
           <th>Background check</th>
-          <th>Days in stage</th>
+          <th>Referred Shift</th>
           <th>Next action</th>
           <th>Due</th>
           <th></th>
@@ -409,6 +409,16 @@
         <label>Role / position</label>
         <input type="text" id="f-role" placeholder="e.g. Customer Service Rep">
       </div>
+      <div class="field">
+        <label>Referred Shift</label>
+        <select id="f-shift">
+          <option value="">— Select —</option>
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
       <div class="field">
         <label>Stage</label>
         <select id="f-stage">
@@ -496,6 +506,7 @@
       <label>Notes</label>
       <textarea id="f-notes" placeholder="Optional notes…"></textarea>
     </div>
+
     <div class="field" style="background:#FAFBFD; border:1px solid var(--border); border-radius:7px; padding:10px 12px; margin-top:2px;">
       <label style="display:flex; align-items:center; gap:7px; margin-bottom:0; font-size:12.5px; color:var(--ink);">
         <input type="checkbox" id="f-override" style="width:auto;"> Override stage requirements for this save
@@ -693,7 +704,6 @@ function renderSummary(){
 function renderTable(){
   const rows = getFiltered().sort((a,b) => daysBetween(b.stageDate) - daysBetween(a.stageDate));
   $('#tbody').innerHTML = rows.map(c => {
-    const days = daysBetween(c.stageDate);
     const flagged = isFlagged(c);
     const overdue = isOverdue(c);
     const nextStage = STAGES[STAGES.indexOf(c.stage) + 1];
@@ -711,7 +721,7 @@ function renderTable(){
         </td>
         <td>${scheduleCell(c)}</td>
         <td>${bgCheckBadge(c.bgCheck, c.bgCheckDate)}</td>
-        <td><span class="days-num ${flagged?'flag':''}">${days}d</span></td>
+        <td><span class="days-num">${c.shift ? escapeHtml(c.shift) : '—'}</span></td>
         <td><span class="next-action">${escapeHtml(c.nextAction||'—')}</span></td>
         <td><span class="next-date ${overdue?'overdue':''}">${c.nextDate ? c.nextDate : '—'}</span></td>
         <td>
@@ -788,7 +798,6 @@ function renderBoard(){
         </div>
         <div class="col-body">
           ${items.map(c => {
-            const days = daysBetween(c.stageDate);
             const flagged = isFlagged(c);
             const nextStage = STAGES[STAGES.indexOf(c.stage) + 1];
             return `
@@ -798,7 +807,7 @@ function renderBoard(){
                 <div style="margin-bottom:7px;">${bgCheckBadge(c.bgCheck, c.bgCheckDate)}</div>
                 <div class="cnext">O: ${c.orientationDate||'—'}${c.orientationMissed?' (missed)':''} · T: ${c.trainingDate||'—'}${c.trainingMissed?' (missed)':''} · S: ${c.startDate||'—'}${c.startMissed?' (missed)':''}</div>
                 <div class="cmeta">
-                  <span class="cdays ${flagged?'flag':''}">${days}d in stage</span>
+                  <span class="cdays">${c.shift ? escapeHtml(c.shift) + ' shift' : 'Shift not set'}</span>
                 </div>
                 ${c.nextAction ? `<div class="cnext">→ ${escapeHtml(c.nextAction)}${c.nextDate ? ' · ' + c.nextDate : ''}</div>` : ''}
                 ${nextStage ? `<button class="cbtn" data-nextstage="${c.id}">→ ${STAGE_LABEL[nextStage]}</button>` : ''}
@@ -846,6 +855,7 @@ function openAdd(){
   $('#f-empnum').value = '';
   $('#f-location').value = '';
   $('#f-role').value = '';
+  $('#f-shift').value = '';
   $('#f-stage').value = 'onboarding';
   $('#f-bgcheck').value = '';
   $('#f-bgcheckdate').value = '';
@@ -877,6 +887,7 @@ function openEdit(id){
   $('#f-empnum').value = c.employeeNumber || '';
   $('#f-location').value = c.location || '';
   $('#f-role').value = c.role || '';
+  $('#f-shift').value = c.shift || '';
   $('#f-stage').value = c.stage;
   $('#f-bgcheck').value = c.bgCheck || '';
   $('#f-bgcheckdate').value = c.bgCheckDate || '';
@@ -906,6 +917,7 @@ const IMPORT_FIELDS = [
   { key: 'employeeNumber', label: 'Employee number', guesses: ['employee', 'emp #', 'emp no', 'emp id'] },
   { key: 'location', label: 'Location assigned', guesses: ['location', 'site', 'facility'] },
   { key: 'role', label: 'Role / position', guesses: ['role', 'position', 'title'] },
+  { key: 'shift', label: 'Referred Shift', guesses: ['shift', 'am/pm'] },
   { key: 'stage', label: 'Stage', guesses: ['stage', 'status'] },
   { key: 'bgCheck', label: 'Background check', guesses: ['background', 'bg check', 'bgcheck'] },
   { key: 'notes', label: 'Notes', guesses: ['note'] },
@@ -1038,6 +1050,7 @@ $('#importConfirmBtn').addEventListener('click', () => {
       employeeNumber: get('employeeNumber'),
       location: get('location'),
       role: get('role'),
+      shift: (['AM', 'PM'].includes(get('shift').toUpperCase()) ? get('shift').toUpperCase() : ''),
       stage,
       bgCheck,
       bgCheckDate: '',
@@ -1069,6 +1082,7 @@ const EXPORT_COLUMNS = [
   { key: 'employeeNumber', header: 'Employee Number' },
   { key: 'location', header: 'Location Assigned' },
   { key: 'role', header: 'Role' },
+  { key: 'shift', header: 'Referred Shift' },
   { key: 'stage', header: 'Stage', format: (v) => STAGE_LABEL[v] || v },
   { key: 'bgCheck', header: 'Background Check' },
   { key: 'bgCheckDate', header: 'BG Check Date' },
@@ -1090,9 +1104,9 @@ function csvEscape(value){
   return str;
 }
 
-function exportCandidatesCsv(){
+function exportCandidatesCsv(list){
   const headerRow = EXPORT_COLUMNS.map(c => csvEscape(c.header)).join(',');
-  const dataRows = candidates.map(c =>
+  const dataRows = list.map(c =>
     EXPORT_COLUMNS.map(col => {
       const raw = c[col.key];
       return csvEscape(col.format ? col.format(raw) : raw);
@@ -1104,8 +1118,9 @@ function exportCandidatesCsv(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const stamp = todayISO();
+  const stageSlug = stageFilter === 'all' ? 'all-stages' : stageFilter;
   a.href = url;
-  a.download = `vangst-glasshouse-candidates-${stamp}.csv`;
+  a.download = `vangst-glasshouse-candidates-${stageSlug}-${stamp}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1113,11 +1128,14 @@ function exportCandidatesCsv(){
 }
 
 $('#exportCsvBtn').addEventListener('click', () => {
-  if(candidates.length === 0){
-    alert('There are no candidates to export yet.');
+  const list = getFiltered();
+  if(list.length === 0){
+    alert('No candidates match the current filters — adjust the stage/location/search filters above, or clear them to export everyone.');
     return;
   }
-  exportCandidatesCsv();
+  const label = stageFilter === 'all' ? 'all candidates' : `candidates in ${STAGE_LABEL[stageFilter]}`;
+  if(!confirm(`Export ${list.length} ${label} (based on the filters currently applied above)?`)) return;
+  exportCandidatesCsv(list);
 });
 
 function showFormError(msg){
@@ -1196,6 +1214,7 @@ function saveCandidate(){
     employeeNumber,
     location: $('#f-location').value,
     role: $('#f-role').value.trim(),
+    shift: $('#f-shift').value,
     stage,
     bgCheck,
     bgCheckDate: $('#f-bgcheckdate').value,
