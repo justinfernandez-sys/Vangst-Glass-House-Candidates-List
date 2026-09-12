@@ -342,7 +342,7 @@
           <th>Stage</th>
           <th>Scheduled</th>
           <th>Background check</th>
-          <th>Referred Shift</th>
+          <th>Shift</th>
           <th>Next action</th>
           <th>Due</th>
           <th></th>
@@ -410,7 +410,7 @@
         <input type="text" id="f-role" placeholder="e.g. Customer Service Rep">
       </div>
       <div class="field">
-        <label>Referred Shift</label>
+        <label>Shift</label>
         <select id="f-shift">
           <option value="">— Select —</option>
           <option value="AM">AM</option>
@@ -917,7 +917,7 @@ const IMPORT_FIELDS = [
   { key: 'employeeNumber', label: 'Employee number', guesses: ['employee', 'emp #', 'emp no', 'emp id'] },
   { key: 'location', label: 'Location assigned', guesses: ['location', 'site', 'facility'] },
   { key: 'role', label: 'Role / position', guesses: ['role', 'position', 'title'] },
-  { key: 'shift', label: 'Referred Shift', guesses: ['shift', 'am/pm'] },
+  { key: 'shift', label: 'Shift', guesses: ['shift', 'am/pm'] },
   { key: 'stage', label: 'Stage', guesses: ['stage', 'status'] },
   { key: 'bgCheck', label: 'Background check', guesses: ['background', 'bg check', 'bgcheck'] },
   { key: 'notes', label: 'Notes', guesses: ['note'] },
@@ -1082,7 +1082,7 @@ const EXPORT_COLUMNS = [
   { key: 'employeeNumber', header: 'Employee Number' },
   { key: 'location', header: 'Location Assigned' },
   { key: 'role', header: 'Role' },
-  { key: 'shift', header: 'Referred Shift' },
+  { key: 'shift', header: 'Shift' },
   { key: 'stage', header: 'Stage', format: (v) => STAGE_LABEL[v] || v },
   { key: 'bgCheck', header: 'Background Check' },
   { key: 'bgCheckDate', header: 'BG Check Date' },
