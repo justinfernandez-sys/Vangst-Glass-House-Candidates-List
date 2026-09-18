@@ -227,6 +227,18 @@
   .edit-link-btn:hover{ color: var(--ink); }
   .final-stage-note{ font-size:12px; color: var(--ink-faint); }
 
+  .dup-badge{
+    display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700;
+    padding:2px 7px; border-radius:999px; background:#FFF3F0; color: var(--alert);
+    border:1px solid #E3B3AA; margin-left:7px; white-space:nowrap; cursor:help; vertical-align:middle;
+  }
+  .dup-notice{
+    display:none; background: var(--amber-bg); border:1px solid #E7C9A8; color: var(--amber);
+    border-radius:7px; padding:9px 12px; font-size:12.5px; margin: -4px 0 13px; font-weight:500;
+  }
+  .dup-notice.show{ display:block; }
+  .dup-notice strong{ color:#6B4718; }
+
   /* ---------- Empty state ---------- */
   .empty{
     background: var(--panel); border: 1px dashed var(--border-strong); border-radius: var(--radius);
@@ -330,7 +342,7 @@
   </div>
 
   <div class="legend" id="legendLine">
-    Milestone pills show whether Orientation, Training, and Start were Attended, Missed, or are still Pending. A row tinted orange or red needs a decision.
+    Milestone pills show whether Orientation, Training, and Start were Attended, Missed, or are still Pending. A ⚠ Duplicate badge next to a name means another candidate shares the same Employee #, Email, or Phone.
   </div>
 
   <div id="tableView">
@@ -396,6 +408,7 @@
         </select>
       </div>
     </div>
+    <div id="dupNotice" class="dup-notice"></div>
     <div class="form-section">Assignment</div>
     <div class="field-row">
       <div class="field">
@@ -668,6 +681,26 @@ function milestonePill(attended, missed){
   return `<span class="mile-pill pending">Pending</span>`;
 }
 
+function normalizePhone(p){ return (p||'').replace(/\D/g,''); }
+
+/* Compares a candidate-shaped object (employeeNumber/email/phone) against everyone
+   else already stored, skipping removed candidates and the record itself (by id). */
+function findDuplicates(temp, excludeId){
+  const matches = [];
+  candidates.forEach(other => {
+    if(other.id === excludeId || other.markedForRemoval) return;
+    const fields = [];
+    if(temp.employeeNumber && other.employeeNumber &&
+       temp.employeeNumber.trim().toLowerCase() === other.employeeNumber.trim().toLowerCase()) fields.push('Employee #');
+    if(temp.email && other.email &&
+       temp.email.trim().toLowerCase() === other.email.trim().toLowerCase()) fields.push('Email');
+    const tempPhone = normalizePhone(temp.phone);
+    if(tempPhone && tempPhone === normalizePhone(other.phone)) fields.push('Phone');
+    if(fields.length) matches.push({ other, fields });
+  });
+  return matches;
+}
+
 function milestonesCell(c){
   const rows = [
     { label: 'Orient.', date: c.orientationDate, attended: c.orientationAttended, missed: c.orientationMissed },
@@ -797,10 +830,15 @@ function renderList(){
       }
     }
 
+    const dups = findDuplicates(c, c.id);
+    const dupBadge = dups.length
+      ? `<span class="dup-badge" title="Matches ${escapeHtml(dups.map(d => fullName(d.other) + ' (' + d.fields.join(', ') + ')').join('; '))}">⚠ Duplicate</span>`
+      : '';
+
     const mainRow = `
       <tr class="main-row ${rowClass}" data-id="${c.id}">
         <td>
-          <div class="name-cell">${escapeHtml(fullName(c))}</div>
+          <div class="name-cell">${escapeHtml(fullName(c))}${dupBadge}</div>
           <div class="role-cell">${escapeHtml(c.role||'')}${c.employeeNumber ? ' · ' + escapeHtml(c.employeeNumber) : ''}</div>
         </td>
         <td><span class="role-cell">${escapeHtml(c.location||'—')}</span></td>
@@ -878,6 +916,26 @@ bindExclusive('#f-orientationattended', '#f-orientationmissed');
 bindExclusive('#f-trainingattended', '#f-trainingmissed');
 bindExclusive('#f-startattended', '#f-startmissed');
 
+function updateDupNotice(){
+  const temp = {
+    employeeNumber: $('#f-empnum').value.trim(),
+    email: $('#f-email').value.trim(),
+    phone: $('#f-phone').value.trim(),
+  };
+  const excludeId = $('#editId').value || null;
+  const matches = findDuplicates(temp, excludeId);
+  const el = $('#dupNotice');
+  if(matches.length){
+    const list = matches.map(m => `<strong>${escapeHtml(fullName(m.other))}</strong> (same ${m.fields.join(' & ')})`).join(', ');
+    el.innerHTML = `⚠ This looks like it might already be in the list — matches ${list}. Double check before saving; this won't stop you from saving.`;
+    el.classList.add('show');
+  }else{
+    el.classList.remove('show');
+    el.innerHTML = '';
+  }
+}
+['#f-empnum', '#f-email', '#f-phone'].forEach(sel => $(sel).addEventListener('input', updateDupNotice));
+
 function openAdd(){
   clearFormError();
   $('#modalTitle').textContent = 'Add candidate';
@@ -911,6 +969,7 @@ function openAdd(){
   $('#f-removalreason').value = '';
   $('#deleteBtn').style.display = 'none';
   $('#overlay').classList.add('open');
+  updateDupNotice();
 }
 
 function openEdit(id){
@@ -948,6 +1007,7 @@ function openEdit(id){
   $('#f-removalreason').value = c.removalReason || '';
   $('#deleteBtn').style.display = 'inline-block';
   $('#overlay').classList.add('open');
+  updateDupNotice();
 }
 
 function closeModal(){ $('#overlay').classList.remove('open'); }
@@ -1024,6 +1084,12 @@ function saveCandidate(){
         return;
       }
     }
+  }
+
+  const dupMatches = findDuplicates(data, id || null);
+  if(dupMatches.length){
+    const list = dupMatches.map(m => `${fullName(m.other)} (same ${m.fields.join(' & ')})`).join(', ');
+    if(!confirm(`This looks like it might be a duplicate of: ${list}.\n\nSave anyway?`)) return;
   }
 
   if(id){
