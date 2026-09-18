@@ -75,6 +75,32 @@
   }
   .btn-ghost:hover{ background: var(--panel); }
 
+  /* ---------- Summary strip ---------- */
+  .summary{
+    display:grid; grid-template-columns: repeat(8, 1fr); gap: 12px;
+    margin-bottom: 20px;
+  }
+  .sum-card{
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; position: relative; overflow:hidden;
+  }
+  .sum-card .n{ font-family: var(--font-num); font-size: 26px; font-weight: 600; line-height:1; }
+  .sum-card .l{ font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; }
+  .sum-card.bar-total{ border-top: 3px solid var(--ink); }
+  .sum-card.bar-onboarding{ border-top: 3px solid var(--stage-onboarding); }
+  .sum-card.bar-onboarded{ border-top: 3px solid var(--stage-onboarded); }
+  .sum-card.bar-orientation{ border-top: 3px solid var(--stage-orientation); }
+  .sum-card.bar-training{ border-top: 3px solid var(--stage-training); }
+  .sum-card.bar-bench{ border-top: 3px solid var(--stage-bench); }
+  .sum-card.bar-start{ border-top: 3px solid var(--stage-start); }
+  .sum-card.bar-active{ border-top: 3px solid var(--stage-active); }
+  @media (max-width: 1200px){
+    .summary{ grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 640px){
+    .summary{ grid-template-columns: repeat(2, 1fr); }
+  }
+
   /* ---------- Controls ---------- */
   .controls{
     display:flex; align-items:center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
@@ -266,6 +292,8 @@
     </div>
   </header>
 
+  <div class="summary" id="summary"></div>
+
   <div class="controls">
     <input class="search" id="search" placeholder="Search by name, role, employee #, phone, or email…">
     <select class="loc-select" id="locationFilter">
@@ -314,7 +342,6 @@
           <th>Stage</th>
           <th>Milestones</th>
           <th>Background check</th>
-          <th>Next action</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -708,8 +735,29 @@ function renderTabs(){
 
 /* ---------- Render ---------- */
 function render(){
+  renderSummary();
   renderTabs();
   renderList();
+}
+
+function renderSummary(){
+  const counts = { onboarding:0, onboarded:0, orientation:0, training:0, bench:0, start:0, active:0 };
+  let total = 0;
+  candidates.forEach(c => {
+    if(c.markedForRemoval) return; // removed candidates don't count toward the pipeline
+    total++;
+    if(counts[c.stage] !== undefined) counts[c.stage]++;
+  });
+  $('#summary').innerHTML = `
+    <div class="sum-card bar-total"><div class="n">${total}</div><div class="l">Total in pipeline</div></div>
+    <div class="sum-card bar-onboarding"><div class="n">${counts.onboarding}</div><div class="l">Onboarding</div></div>
+    <div class="sum-card bar-onboarded"><div class="n">${counts.onboarded}</div><div class="l">Onboarded</div></div>
+    <div class="sum-card bar-orientation"><div class="n">${counts.orientation}</div><div class="l">Orientation</div></div>
+    <div class="sum-card bar-training"><div class="n">${counts.training}</div><div class="l">Training</div></div>
+    <div class="sum-card bar-bench"><div class="n">${counts.bench}</div><div class="l">Bench</div></div>
+    <div class="sum-card bar-start"><div class="n">${counts.start}</div><div class="l">Start</div></div>
+    <div class="sum-card bar-active"><div class="n">${counts.active}</div><div class="l">Active</div></div>
+  `;
 }
 
 function renderList(){
@@ -718,8 +766,7 @@ function renderList(){
   const isRemoveTab = activeTab === 'to-remove';
 
   $('#tbody').innerHTML = rows.map(c => {
-    const overdue = isOverdue(c);
-    const rowClass = isRemoveTab ? 'attn-row danger-row' : (isAttnTab ? 'attn-row' : (overdue ? 'overdue-row' : ''));
+    const rowClass = isRemoveTab ? 'attn-row danger-row' : (isAttnTab ? 'attn-row' : '');
 
     let actionsHtml;
     if(isRemoveTab){
@@ -763,16 +810,12 @@ function renderList(){
         </td>
         <td>${milestonesCell(c)}</td>
         <td>${bgCheckBadge(c.bgCheck, c.bgCheckDate)}</td>
-        <td>
-          <div class="next-action">${escapeHtml(c.nextAction||'—')}</div>
-          <div class="next-date ${overdue?'overdue':''}">${c.nextDate ? c.nextDate : ''}</div>
-        </td>
         <td>${actionsHtml}</td>
       </tr>
     `;
     const noteRow = c.notes ? `
       <tr class="note-row ${rowClass}" data-id="${c.id}">
-        <td colspan="7" style="padding-top:0;">
+        <td colspan="6" style="padding-top:0;">
           <div class="note-box"><strong>Note:</strong> <span>${escapeHtml(c.notes)}</span></div>
         </td>
       </tr>
