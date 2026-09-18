@@ -157,7 +157,8 @@
   tbody tr.attn-row td{ background: var(--amber-bg); }
   tbody tr.attn-row.danger-row td{ background: #FFF3F0; }
   tbody tr.overdue-row td{ background: var(--alert-bg); }
-  .name-cell{ font-weight: 600; }
+  .name-cell{ font-weight: 600; cursor: pointer; }
+  .name-cell:hover{ text-decoration: underline; color: var(--ink); }
   .role-cell{ color: var(--ink-soft); font-size: 12.5px; }
   .next-action{ font-size: 12.5px; }
   .next-date{ font-family: var(--font-num); font-size: 12px; color: var(--ink-soft); }
@@ -838,7 +839,7 @@ function renderList(){
     const mainRow = `
       <tr class="main-row ${rowClass}" data-id="${c.id}">
         <td>
-          <div class="name-cell">${escapeHtml(fullName(c))}${dupBadge}</div>
+          <div class="name-cell" data-edit="${c.id}" title="Click to edit ${escapeHtml(fullName(c))}">${escapeHtml(fullName(c))}${dupBadge}</div>
           <div class="role-cell">${escapeHtml(c.role||'')}${c.employeeNumber ? ' · ' + escapeHtml(c.employeeNumber) : ''}</div>
         </td>
         <td><span class="role-cell">${escapeHtml(c.location||'—')}</span></td>
